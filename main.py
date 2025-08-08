@@ -150,12 +150,15 @@ def set_bag_status(bag_id: int, status_value: str, user: dict = Depends(verify_t
 
 # --- Statistika ---
 @app.get("/partner/stats", response_model=Stats)
+@app.get("/partner/stats", response_model=Stats)
 def get_stats(user: dict = Depends(verify_token)):
     broj_bagova = len(bagovi)
-    broj_porudzbina = broj_bagova * 2  # primer logike
+    # Pretpostavka: "porudžbina" ~ ukupno komada (sum(kolicina)) dok ne uvedemo prave narudžbine
+    broj_porudzbina = sum(b.kolicina for b in bagovi)
     ukupna_zarada = sum(b.cena * b.kolicina for b in bagovi)
     return Stats(
         broj_bagova=broj_bagova,
         broj_porudzbina=broj_porudzbina,
-        ukupna_zarada=ukupna_zarada,
+        ukupna_zarada=ukupna_zarada
     )
+
