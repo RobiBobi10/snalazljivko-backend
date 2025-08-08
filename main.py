@@ -38,13 +38,14 @@ class Token(BaseModel):
     token_type: str
 
 class Bag(BaseModel):
-    id: int
+    id: int | None = None
     naziv: str
     opis: str
     tip: str
     cena: float
     vreme_preuzimanja: str
     kolicina: int
+
 
 class Stats(BaseModel):
     broj_bagova: int
