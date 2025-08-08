@@ -1,22 +1,21 @@
-from fastapi.middleware.cors import CORSMiddleware
-
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 
+app = FastAPI()
+
+# ✅ Dodaj CORS nakon što definišeš app
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # frontend adresa
+    allow_origins=["http://localhost:5173"],  # ovde možeš dodati i frontend deploy kasnije
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-app = FastAPI()
 
 # Dummy baza korisnika
 fake_users_db = {
