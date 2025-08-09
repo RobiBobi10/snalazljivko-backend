@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -6,9 +6,9 @@ from typing import List, Optional
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 
-app = FastAPI()
+app = FastAPI(title="Snalazljivko Backend")
 
-# CORS – dodaj i prod URL ako bude trebalo
+# CORS – dodaj i prod URL ako bude potrebno
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "https://snalazljivko-frontend.vercel.app"],
@@ -17,11 +17,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Dummy korisnici (za demo) ---
+# --- Dummy korisnici (demo) ---
 fake_users_db = {
     "partner": {
         "username": "partner",
-        "password": "tajna",  # samo primer (bez hash-a)
+        "password": "tajna",  # primer (bez hash-a)
         "role": "partner",
     }
 }
@@ -119,7 +119,19 @@ def create_bag(bag: Bag, user: dict = Depends(verify_token)):
     return bag
 
 @app.put("/partner/bags/{bag_id}", response_model=Bag)
-def update_bag(bag_id: int, patch: BagUpdate, user: dict = Depends(verify_token)):
+def update_bag_put(bag_id: int, patch: BagUpdate, user: dict = Depends(verify_token)):
+    for i, b in enumerate(bagovi):
+        if b.id == bag_id:
+            data = b.dict()
+            patch_data = {k: v for k, v in patch.dict().items() if v is not None}
+            data.update(patch_data)
+            bagovi[i] = Bag(**data)
+            return bagovi[i]
+    raise HTTPException(status_code=404, detail="Bag nije pronađen")
+
+# (Opcionalno) PATCH endpoint ako želiš baš PATCH semantiku
+@app.patch("/partner/bags/{bag_id}", response_model=Bag)
+def update_bag_patch(bag_id: int, patch: BagUpdate, user: dict = Depends(verify_token)):
     for i, b in enumerate(bagovi):
         if b.id == bag_id:
             data = b.dict()
@@ -139,9 +151,11 @@ def delete_bag(bag_id: int, user: dict = Depends(verify_token)):
     return
 
 @app.patch("/partner/bags/{bag_id}/status", response_model=Bag)
-def set_bag_status(bag_id: int, status_value: str, user: dict = Depends(verify_token)):
-    if status_value not in {"active", "sold_out", "archived"}:
-        raise HTTPException(status_code=400, detail="Pogrešan status")
+def set_bag_status(
+    bag_id: int,
+    status_value: str = Query(..., regex="^(active|sold_out|archived)$"),
+    user: dict = Depends(verify_token),
+):
     for i, b in enumerate(bagovi):
         if b.id == bag_id:
             bagovi[i].status = status_value
@@ -150,10 +164,9 @@ def set_bag_status(bag_id: int, status_value: str, user: dict = Depends(verify_t
 
 # --- Statistika ---
 @app.get("/partner/stats", response_model=Stats)
-@app.get("/partner/stats", response_model=Stats)
 def get_stats(user: dict = Depends(verify_token)):
     broj_bagova = len(bagovi)
-    # Pretpostavka: "porudžbina" ~ ukupno komada (sum(kolicina)) dok ne uvedemo prave narudžbine
+    # privremeno: "porudžbina" ~ suma kolicina
     broj_porudzbina = sum(b.kolicina for b in bagovi)
     ukupna_zarada = sum(b.cena * b.kolicina for b in bagovi)
     return Stats(
@@ -161,4 +174,3 @@ def get_stats(user: dict = Depends(verify_token)):
         broj_porudzbina=broj_porudzbina,
         ukupna_zarada=ukupna_zarada
     )
-
